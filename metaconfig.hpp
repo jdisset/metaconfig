@@ -22,7 +22,7 @@
 			                           f<decltype(accessors[boost::hana::size_c<0>])>),   \
 			    [&](auto p) {                                                             \
 				    constexpr auto getMember = p.second;                                    \
-				    std::string k(boost::hana::to<char const *>(p.first));                  \
+				    std::string k(boost::hana::to<char const*>(p.first));                   \
 				    if (o.count(k)) {                                                       \
 					    getMember(*this) = o.at(k);                                           \
 					    o.erase(k);                                                           \
@@ -39,7 +39,7 @@
 			nlohmann::json j;                                                             \
 			std::stringstream out;                                                        \
 			boost::hana::for_each(*this, [&](auto p) {                                    \
-				std::string k(boost::hana::to<char const *>(boost::hana::first(p)));        \
+				std::string k(boost::hana::to<char const*>(boost::hana::first(p)));         \
 				j[k] = boost::hana::second(p);                                              \
 			});                                                                           \
 			out << j.dump(2);                                                             \
