@@ -3,6 +3,7 @@
 
 #include <boost/hana.hpp>
 #include <fstream>
+#include "includes/cxxopts.hpp"
 #include "includes/json.hpp"
 
 #define DECLARE_CONFIG(N, ...)                                                       \
@@ -28,6 +29,20 @@
 			for (auto it = o.begin(); it != o.end(); ++it) {                               \
 				std::cerr << "Unknown param: " << it.key() << std::endl;                     \
 			}                                                                              \
+		}                                                                                \
+                                                                                     \
+		void parse(int argc, char** argv) {                                              \
+			constexpr auto accessors = boost::hana::accessors<N>();                        \
+			cxxopts::Options options(argv[0]);                                             \
+			boost::hana::for_each(                                                         \
+			    boost::hana::transform(accessors, [](auto a) { return a; }), [&](auto p) { \
+				    constexpr auto getMember = boost::hana::second(p);                       \
+				    std::string k(boost::hana::to<char const*>(boost::hana::first(p)));      \
+				    auto& r = getMember(*this);                                              \
+				    options.add_options()(                                                   \
+				        k, k, cxxopts::value<std::remove_reference_t<decltype(r)>>(r));      \
+			    });                                                                        \
+			options.parse(argc, argv);                                                     \
 		}                                                                                \
                                                                                      \
 		std::string print() {                                                            \
