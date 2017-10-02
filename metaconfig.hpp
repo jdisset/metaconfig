@@ -35,15 +35,20 @@
 			}                                                                             \
 		}                                                                               \
                                                                                     \
-		void save(std::string file) {                                                   \
-			std::ofstream fs(file);                                                       \
-			nlohmann::json j;                                                              \
+		std::string print() {                                                           \
+			nlohmann::json j;                                                             \
+			std::stringstream out;                                                        \
 			boost::hana::for_each(*this, [&](auto p) {                                    \
 				std::string k(boost::hana::to<char const *>(boost::hana::first(p)));        \
 				j[k] = boost::hana::second(p);                                              \
 			});                                                                           \
-			fs << j.dump(2);                                                              \
-			fs.close();                                                                     \
+			out << j.dump(2);                                                             \
+			return out.str();                                                             \
+		}                                                                               \
+		void save(std::string file) {                                                   \
+			std::ofstream fs(file);                                                       \
+			fs << print();                                                                \
+			fs.close();                                                                   \
 		}                                                                               \
 	};
 
