@@ -1,2 +1,3 @@
-# metaconfig
-Config class generation tool with automatic serialization and no overhead.
+# A tiny configuration class generation tool
+With automatic serialization and no runtime overhead.
+
