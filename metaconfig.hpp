@@ -13,7 +13,7 @@
 			std::stringstream buffer;                                                      \
 			buffer << t.rdbuf();                                                           \
 			auto o = nlohmann::json::parse(buffer.str());                                  \
-			constexpr auto accessors = boost::hana::accessors<MaConfig>();                 \
+			constexpr auto accessors = boost::hana::accessors<N>();                        \
 			boost::hana::for_each(                                                         \
 			    boost::hana::transform(accessors, [](auto a) { return a; }), [&](auto p) { \
 				    constexpr auto getMember = boost::hana::second(p);                       \
