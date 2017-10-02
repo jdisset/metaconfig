@@ -1,12 +1,12 @@
 #include <iostream>
 #include "../metaconfig.hpp"
-DECLARE_CONFIG(MaConfig, (int, lol), (std::string, bite));
+
+DECLARE_CONFIG(MyConfig, (int, varA), (double, varB),
+               (std::string, varC));  // declaring the config class with all the params
 
 int main(int argc, char** argv) {
-	MaConfig cfg;
-	cfg.load("test.cfg");
-	cfg.parse(argc, argv);
-	std::cout << "Cgf lol = " << cfg.lol << std::endl;
-	cfg.lol = 8;
-	cfg.save("saved.cfg");
+	MyConfig cfg;
+	cfg.load("test.cfg");   // load from a file
+	cfg.parse(argc, argv);  // parse command line
+	cfg.save("saved.cfg");  // save the current config
 };
