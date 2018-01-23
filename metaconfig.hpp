@@ -7,8 +7,7 @@
 #include "includes/json.hpp"
 
 #define DECLARE_CONFIG(N, ...)                                                       \
-	struct N {                                                                         \
-		BOOST_HANA_DEFINE_STRUCT(N, ##__VA_ARGS__);                                      \
+		BOOST_HANA_DEFINE_STRUCT(N, __VA_ARGS__);                                      \
 		void load(std::string file) {                                                    \
 			std::ifstream t(file);                                                         \
 			std::stringstream buffer;                                                      \
@@ -45,7 +44,7 @@
 			options.parse(argc, argv);                                                     \
 		}                                                                                \
                                                                                      \
-		std::string print() {                                                            \
+		std::string printJSON() {                                                            \
 			nlohmann::json j;                                                              \
 			std::stringstream out;                                                         \
 			boost::hana::for_each(*this, [&](auto p) {                                     \
@@ -57,9 +56,8 @@
 		}                                                                                \
 		void save(std::string file) {                                                    \
 			std::ofstream fs(file);                                                        \
-			fs << print();                                                                 \
+			fs << printJSON();                                                                 \
 			fs.close();                                                                    \
 		}                                                                                \
-	};
 
 #endif
