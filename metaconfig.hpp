@@ -56,8 +56,6 @@
 		std::ofstream fs(file);                                                             \
 		fs << print();                                                                      \
 		fs.close();                                                                         \
-	}
-
 /* void parse(int argc, char** argv) { \*/
 //constexpr auto accessors = boost::hana::accessors<N>();                        \\
 		//cxxopts::Options options(argv[0]);                                             \
