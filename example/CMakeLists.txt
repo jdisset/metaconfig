@@ -1,8 +1,10 @@
+cmake_minimum_required(VERSION 3.0)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_compile_options("-Wall" "-Wextra" "-pedantic")
 
 find_package(Boost)
 if(Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
-  add_executable(test main.cpp)
+	include_directories(${Boost_INCLUDE_DIRS})
+	add_executable(test main.cpp)
 endif()

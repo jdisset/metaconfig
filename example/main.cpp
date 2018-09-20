@@ -10,7 +10,7 @@ struct Config {
 		}
 	};
 
-	DECLARE_CONFIG(Config, (int, a), (Nested, nested));
+	DECLARE_CONFIG(Config, (int, a), (Nested, n));  //, (Nested, nested));
 	Config() { a = 2; }
 };
 
@@ -19,6 +19,7 @@ template <typename T> void to_json(nlohmann::json& j, const T& e) { j = e.to_jso
 
 int main(int argc, char** argv) {
 	Config cfg;
+	cfg.parse(argc, argv);
 	std::cout << cfg.print() << std::endl;  // save the current config
 	return 0;
 }
