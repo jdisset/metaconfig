@@ -10,6 +10,22 @@
 #include "includes/cxxopts.hpp"
 #include "includes/json.hpp"
 
+namespace std {
+template <typename T, typename = typename T::isAConfigClass>
+std::ostream& operator<<(std::ostream& os, const T& t) {
+	os << t.print();
+	return os;
+}
+
+}  // namespace std
+
+inline constexpr bool is_associative_container(...) { return false; }
+
+template <typename C, typename = typename C::mapped_type>
+constexpr bool is_associative_container(C const*) {
+	return true;
+}
+
 std::ostream& operator<<(std::ostream& os, const std::vector<bool>& bf) {
 	for (const auto& b : bf) os << b;
 	return os;
@@ -35,37 +51,24 @@ template <typename T> std::string toStr(const T& t) {
 	return ss.str();
 }
 
-inline constexpr bool is_associative_container(...) { return false; }
+// specialization for associative containers without string as a key type
+namespace nlohmann {
+template <typename T>
+struct adl_serializer<
+    T, typename std::enable_if<is_associative_container<T>(nullptr)>::type> {
+	static void to_json(nlohmann::json& j, const T& m) {
+		j = nlohmann::json();
+		for (const auto& e : m) j[toStr(e.first)] = e.second;
+	}
 
-template <typename C, typename = typename C::mapped_type>
-constexpr bool is_associative_container(C const*) {
-	return true;
-}
-
-namespace std {
-template <class C>
-typename std::enable_if<is_associative_container<C>(nullptr)>::type to_json(
-    nlohmann::json& j, C& m) {
-	j = nlohmann::json();
-	for (const auto& e : m) j[toStr(e.first)] = e.second;
-}
-
-template <class C>
-typename std::enable_if<is_associative_container<C>(nullptr)>::type from_json(
-    const nlohmann::json& j, C& m) {
-	m.clear();
-	for (auto it = j.begin(); it != j.end(); ++it)
-		m[fromStr<typename C::key_type>(it.key())] =
-		    it.value().get<typename C::mapped_type>();
-}
-
-template <typename T, typename = typename T::isAConfigClass>
-std::ostream& operator<<(std::ostream& os, const T& t) {
-	os << t.print();
-	return os;
-}
-
-}  // namespace std
+	static void from_json(const nlohmann::json& j, T& m) {
+		m.clear();
+		for (auto it = j.begin(); it != j.end(); ++it)
+			m[fromStr<typename T::key_type>(it.key())] =
+			    it.value().get<typename T::mapped_type>();
+	}
+};
+}  // namespace nlohmann
 
 template <class METACONFIG_T>
 constexpr bool isConfig(typename METACONFIG_T::isAConfigClass*) {
@@ -107,71 +110,77 @@ template <class T> std::ostream& operator<<(std::ostream& os, const Holder<T>& h
 	return os;
 }
 
-#define METACONFIG_DECLARE_SERIALIZABLE_BODY(N)                                          \
-	using isAConfigClass = bool;                                                           \
-	void loadFromFile(std::string file) {                                                  \
-		std::ifstream t(file);                                                               \
-		std::stringstream buffer;                                                            \
-		buffer << t.rdbuf();                                                                 \
-		auto o = nlohmann::json::parse(buffer.str());                                        \
-		from_json(o);                                                                        \
-	}                                                                                      \
-                                                                                         \
-	void from_json(const nlohmann::json& js) {                                             \
-		nlohmann::json o(js);                                                                \
-		constexpr auto accessors = boost::hana::accessors<N>();                              \
-		boost::hana::for_each(                                                               \
-		    boost::hana::transform(accessors, [](auto a) { return a; }), [&](auto p) {       \
-			    constexpr auto getMember = boost::hana::second(p);                             \
-			    std::string k(boost::hana::to<char const*>(boost::hana::first(p)));            \
-			    using m_t = std::remove_reference_t<decltype(getMember(*this))>;               \
-			    if (o.count(k)) {                                                              \
-				    /*std::cerr << std::string(ns * NSPACE, ' '); auto m =                       \
-				     * Holder<m_t>{o.at(k).get<m_t>()}; std::cerr << k << " = " << m <<          \
-				     * std::endl; */                                                             \
-				    getMember(*this) = o.at(k).get<m_t>();                                       \
-				    o.erase(k);                                                                  \
-			    }                                                                              \
-			    /*  else std::cerr << "WARN: Unable to find param " << k << " in configuration \
-			       file"                                                                       \
-			                << std::endl;     */                                               \
-		    });                                                                              \
-		for (auto it = o.begin(); it != o.end(); ++it) {                                     \
-			std::cerr << "Unknown param: " << it.key() << std::endl;                           \
-		}                                                                                    \
-	}                                                                                      \
-                                                                                         \
-	nlohmann::json to_json() const {                                                       \
-		nlohmann::json j;                                                                    \
-		boost::hana::for_each(*this, [&](auto p) {                                           \
-			std::string k(boost::hana::to<char const*>(boost::hana::first(p)));                \
-			j[k] = boost::hana::second(p);                                                     \
-		});                                                                                  \
-		return j;                                                                            \
-	}                                                                                      \
-                                                                                         \
-	std::string print() const {                                                            \
-		std::stringstream out;                                                               \
-		out << to_json().dump(2);                                                            \
-		return out.str();                                                                    \
-	}                                                                                      \
-                                                                                         \
-	void save(std::string file) const {                                                    \
-		std::ofstream fs(file);                                                              \
-		fs << print();                                                                       \
-		fs.close();                                                                          \
-	}                                                                                      \
-                                                                                         \
-	bool operator==(const N& n) const {                                                    \
-		constexpr auto accessors = boost::hana::accessors<N>();                              \
-		bool result = true;                                                                  \
-		boost::hana::for_each(boost::hana::transform(accessors, [](auto a) { return a; }),   \
-		                      [&](auto p) {                                                  \
-			                      constexpr auto getMember = boost::hana::second(p);           \
-			                      if (getMember(*this) != getMember(n)) result = false;        \
-		                      });                                                            \
-		return result;                                                                       \
-	}                                                                                      \
+template <typename T> std::string realTypeName() {
+	int status;
+	char* realname;
+	realname = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
+	free(realname);
+	std::ostringstream rn;
+	rn << realname;
+	return rn.str();
+}
+
+#define METACONFIG_DECLARE_SERIALIZABLE_BODY(N)                                        \
+	using isAConfigClass = bool;                                                         \
+	void loadFromFile(std::string file) {                                                \
+		std::ifstream t(file);                                                             \
+		std::stringstream buffer;                                                          \
+		buffer << t.rdbuf();                                                               \
+		auto o = nlohmann::json::parse(buffer.str());                                      \
+		from_json(o);                                                                      \
+	}                                                                                    \
+                                                                                       \
+	void from_json(const nlohmann::json& js) {                                           \
+		nlohmann::json o(js);                                                              \
+		constexpr auto accessors = boost::hana::accessors<N>();                            \
+		boost::hana::for_each(                                                             \
+		    boost::hana::transform(accessors, [](auto a) { return a; }), [&](auto p) {     \
+			    constexpr auto getMember = boost::hana::second(p);                           \
+			    std::string k(boost::hana::to<char const*>(boost::hana::first(p)));          \
+			    using m_t = std::remove_reference_t<decltype(getMember(*this))>;             \
+			    if (o.count(k)) {                                                            \
+				    /*std::cerr << "from_json: " << k << ", with type " << realTypeName<m_t>() \
+				              << std::endl;   */                                               \
+				    getMember(*this) = o.at(k).get<m_t>();                                     \
+				    o.erase(k);                                                                \
+			    }                                                                            \
+		    });                                                                            \
+		for (auto it = o.begin(); it != o.end(); ++it) {                                   \
+			std::cerr << "Unknown param: " << it.key() << std::endl;                         \
+		}                                                                                  \
+	}                                                                                    \
+                                                                                       \
+	nlohmann::json to_json() const {                                                     \
+		nlohmann::json j;                                                                  \
+		boost::hana::for_each(*this, [&](auto p) {                                         \
+			std::string k(boost::hana::to<char const*>(boost::hana::first(p)));              \
+			j[k] = boost::hana::second(p);                                                   \
+		});                                                                                \
+		return j;                                                                          \
+	}                                                                                    \
+                                                                                       \
+	std::string print() const {                                                          \
+		std::stringstream out;                                                             \
+		out << to_json().dump(2);                                                          \
+		return out.str();                                                                  \
+	}                                                                                    \
+                                                                                       \
+	void save(std::string file) const {                                                  \
+		std::ofstream fs(file);                                                            \
+		fs << print();                                                                     \
+		fs.close();                                                                        \
+	}                                                                                    \
+                                                                                       \
+	bool operator==(const N& n) const {                                                  \
+		constexpr auto accessors = boost::hana::accessors<N>();                            \
+		bool result = true;                                                                \
+		boost::hana::for_each(boost::hana::transform(accessors, [](auto a) { return a; }), \
+		                      [&](auto p) {                                                \
+			                      constexpr auto getMember = boost::hana::second(p);         \
+			                      if (getMember(*this) != getMember(n)) result = false;      \
+		                      });                                                          \
+		return result;                                                                     \
+	}                                                                                    \
 	bool operator!=(const N& n) const { return !(*this == n); }
 
 // bool operator==(const N& n) const { return (to_json() == n.to_json()); }
