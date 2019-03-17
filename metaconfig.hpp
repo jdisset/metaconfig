@@ -3,6 +3,7 @@
 #include <boost/hana.hpp>
 #include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <regex>
@@ -19,11 +20,17 @@ std::ostream& operator<<(std::ostream& os, const T& t) {
 
 }  // namespace std
 
+// returns true if the given type is an assiciative container
+// WITH A NON LITERAL KEY TYPE !!!!
+
 inline constexpr bool is_associative_container(...) { return false; }
+
+template <typename T> struct is_string { static const constexpr bool value = false; };
+template <> struct is_string<std::string> { static const constexpr bool value = true; };
 
 template <typename C, typename = typename C::mapped_type>
 constexpr bool is_associative_container(C const*) {
-	return true;
+	return !is_string<typename C::key_type>::value;
 }
 
 std::ostream& operator<<(std::ostream& os, const std::vector<bool>& bf) {
@@ -99,7 +106,7 @@ class Argv {
 
  private:
 	std::vector<std::unique_ptr<char[]>> m_args;
-	std::unique_ptr<char* []> m_argv;
+	std::unique_ptr<char*[]> m_argv;
 	int m_argc;
 };
 
