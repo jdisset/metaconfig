@@ -19,14 +19,13 @@ struct Seri {
 
 struct Config {
 	struct Nested {
-		DECLARE_CONFIG(Nested, (std::string, var), (std::vector<double>, vec), (Seri, seri))
+		DECLARE_CONFIG(Nested, (std::string, var), (std::vector<double>, vec))
 		Nested() {
 			var = "hello";
 			vec = std::vector<double>({0, 1, 2});
 		}
 	};
-
-	DECLARE_CONFIG_WITH_DEFAULT(Config, (int, a, 5), (Nested, n, ))  //, (Nested, nested));
+	DECLARE_CONFIG_WITH_DEFAULT(Config, (int, a, 5))  //, (Nested, nested));
 	Config() {}
 };
 
@@ -38,10 +37,9 @@ int main(int argc, char** argv) {
 	// cfg.parse(argc, argv);
 	std::cout << cfg.print() << std::endl;  // save the current config
 	Config cfg2;
-	cfg.n.seri.argS = "lolilol";
+	//cfg.n.seri.argS = "lolilol";
 	cfg2.from_json(cfg.to_json());
 	assert(cfg == cfg2);
-	std::cerr << cfg2.n.seri.argS << std::endl;
-
+	//std::cerr << cfg2.n.seri.argS << std::endl;
 	return 0;
 }

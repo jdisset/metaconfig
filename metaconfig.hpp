@@ -4,11 +4,11 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 #include <iostream>
 #include <memory>
 #include <regex>
 #include "helper.hpp"
-#include "includes/cxxopts.hpp"
 #include "includes/json.hpp"
 
 namespace std {
@@ -19,9 +19,6 @@ std::ostream& operator<<(std::ostream& os, const T& t) {
 }
 
 }  // namespace std
-
-// returns true if the given type is an assiciative container
-// WITH A NON LITERAL KEY TYPE !!!!
 
 inline constexpr bool is_associative_container(...) { return false; }
 
@@ -117,16 +114,6 @@ template <class T> std::ostream& operator<<(std::ostream& os, const Holder<T>& h
 	return os;
 }
 
-template <typename T> std::string realTypeName() {
-	int status;
-	char* realname;
-	realname = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
-	free(realname);
-	std::ostringstream rn;
-	rn << realname;
-	return rn.str();
-}
-
 #define METACONFIG_DECLARE_SERIALIZABLE_BODY(N)                                        \
 	using isAConfigClass = bool;                                                         \
 	void loadFromFile(std::string file) {                                                \
@@ -146,8 +133,6 @@ template <typename T> std::string realTypeName() {
 			    std::string k(boost::hana::to<char const*>(boost::hana::first(p)));          \
 			    using m_t = std::remove_reference_t<decltype(getMember(*this))>;             \
 			    if (o.count(k)) {                                                            \
-				    /*std::cerr << "from_json: " << k << ", with type " << realTypeName<m_t>() \
-				              << std::endl;   */                                               \
 				    getMember(*this) = o.at(k).get<m_t>();                                     \
 				    o.erase(k);                                                                \
 			    }                                                                            \
@@ -189,9 +174,6 @@ template <typename T> std::string realTypeName() {
 		return result;                                                                     \
 	}                                                                                    \
 	bool operator!=(const N& n) const { return !(*this == n); }
-
-// bool operator==(const N& n) const { return (to_json() == n.to_json()); }
-// bool operator!=(const N& n) const { return !(*this == n); }
 
 #define METACONFIG_DECLARE_PARSABLE(N)                                                \
 	void parse(int argc, char** argv) {                                                 \
