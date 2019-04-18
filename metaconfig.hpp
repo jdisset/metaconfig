@@ -4,11 +4,11 @@
 #include <cstring>
 #include <fstream>
 #include <iomanip>
-#include <sstream>
 #include <iostream>
 #include <memory>
 #include <regex>
 #include "helper.hpp"
+#include "includes/cxxopts.hpp"
 #include "includes/json.hpp"
 
 namespace std {
@@ -114,6 +114,16 @@ template <class T> std::ostream& operator<<(std::ostream& os, const Holder<T>& h
 	return os;
 }
 
+/*template <typename T> std::string realTypeName() {*/
+// int status;
+// char* realname;
+// realname = abi::__cxa_demangle(typeid(T).name(), 0, 0, &status);
+// free(realname);
+// std::ostringstream rn;
+// rn << realname;
+// return rn.str();
+/*}*/
+
 #define METACONFIG_DECLARE_SERIALIZABLE_BODY(N)                                        \
 	using isAConfigClass = bool;                                                         \
 	void loadFromFile(std::string file) {                                                \
@@ -133,6 +143,8 @@ template <class T> std::ostream& operator<<(std::ostream& os, const Holder<T>& h
 			    std::string k(boost::hana::to<char const*>(boost::hana::first(p)));          \
 			    using m_t = std::remove_reference_t<decltype(getMember(*this))>;             \
 			    if (o.count(k)) {                                                            \
+				    /*std::cerr << "from_json: " << k << ", with type " << realTypeName<m_t>() \
+				              << std::endl;   */                                               \
 				    getMember(*this) = o.at(k).get<m_t>();                                     \
 				    o.erase(k);                                                                \
 			    }                                                                            \
@@ -174,6 +186,9 @@ template <class T> std::ostream& operator<<(std::ostream& os, const Holder<T>& h
 		return result;                                                                     \
 	}                                                                                    \
 	bool operator!=(const N& n) const { return !(*this == n); }
+
+// bool operator==(const N& n) const { return (to_json() == n.to_json()); }
+// bool operator!=(const N& n) const { return !(*this == n); }
 
 #define METACONFIG_DECLARE_PARSABLE(N)                                                \
 	void parse(int argc, char** argv) {                                                 \
@@ -220,22 +235,62 @@ template <class T> std::ostream& operator<<(std::ostream& os, const Holder<T>& h
 		                  cxxopts::value<std::remove_reference_t<decltype(t)>>(t));       \
 	}
 
-#define DECLARE_CONFIG_BODY(N)            \
+#define METACONFIG_DECLARE_CONFIG_BODY(N) \
 	METACONFIG_DECLARE_SERIALIZABLE_BODY(N) \
 	// METACONFIG_DECLARE_PARSABLE(N)
 
-#define DECLARE_SERIALIZABLE(N, ...)        \
-	BOOST_HANA_DEFINE_STRUCT(N, __VA_ARGS__); \
+#define METACONFIG_DECLARE_SERIALIZABLE(N, ...) \
+	BOOST_HANA_DEFINE_STRUCT(N, __VA_ARGS__);     \
 	METACONFIG_DECLARE_SERIALIZABLE_BODY(N)
 
-#define DECLARE_SERIALIZABLE_WITH_DEFAULT(N, ...) \
-	TUN_DEFINE_STRUCT(N, __VA_ARGS__);              \
+#define METACONFIG_DECLARE_SERIALIZABLE_WITH_DEFAULT(N, ...) \
+	TUN_DEFINE_STRUCT(N, __VA_ARGS__);                         \
 	METACONFIG_DECLARE_SERIALIZABLE_BODY(N)
 
-#define DECLARE_CONFIG(N, ...)              \
+#define METACONFIG_DECLARE_CONFIG(N, ...)   \
 	BOOST_HANA_DEFINE_STRUCT(N, __VA_ARGS__); \
-	DECLARE_CONFIG_BODY(N)
+	METACONFIG_DECLARE_CONFIG_BODY(N)
 
-#define DECLARE_CONFIG_WITH_DEFAULT(N, ...) \
-	TUN_DEFINE_STRUCT(N, __VA_ARGS__);        \
-	DECLARE_CONFIG_BODY(N)
+#define METACONFIG_DECLARE(N, ...)   \
+	TUN_DEFINE_STRUCT(N, __VA_ARGS__); \
+	METACONFIG_DECLARE_CONFIG_BODY(N)
+
+// TODO : generalize to any std container
+#define METACONFIG_NAMESPACE_DEFINITIONS                                                 \
+	template <typename T> void from_json(const nlohmann::json& j, T& e) {                  \
+		e.from_json(j);                                                                      \
+	}                                                                                      \
+	template <typename T> void from_json(const nlohmann::json& j, std::vector<T>& e) {     \
+		e = std::vector<T>();                                                                \
+		for (const auto& i : j) {                                                            \
+			T t;                                                                               \
+			from_json(i, t);                                                                   \
+			e.push_back(t);                                                                    \
+		}                                                                                    \
+	}                                                                                      \
+	template <typename T, size_t N>                                                        \
+	void from_json(const nlohmann::json& j, std::array<T, N>& e) {                         \
+		for (size_t i = 0; i < N; ++i) {                                                     \
+			T t;                                                                               \
+			from_json(j[i], t);                                                                \
+			e[i] = t;                                                                          \
+		}                                                                                    \
+	}                                                                                      \
+	template <typename T> void to_json(nlohmann::json& j, const T& e) { j = e.to_json(); } \
+	template <typename T> void to_json(nlohmann::json& j, const std::vector<T>& e) {       \
+		j = nlohmann::json::array();                                                         \
+		for (const auto& i : e) {                                                            \
+			nlohmann::json o;                                                                  \
+			to_json(o, i);                                                                     \
+			j.push_back(o);                                                                    \
+		}                                                                                    \
+	}                                                                                      \
+	template <typename T, size_t N>                                                        \
+	void to_json(nlohmann::json& j, const std::array<T, N>& e) {                           \
+		j = nlohmann::json::array();                                                         \
+		for (const auto& i : e) {                                                            \
+			nlohmann::json o;                                                                  \
+			to_json(o, i);                                                                     \
+			j.push_back(o);                                                                    \
+		}                                                                                    \
+	}
