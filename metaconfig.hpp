@@ -17,6 +17,16 @@ std::ostream& operator<<(std::ostream& os, const T& t) {
 	os << t.print();
 	return os;
 }
+inline std::ostream& operator<<(std::ostream& os, const std::vector<bool>& bf) {
+	for (const auto& b : bf) os << b;
+	return os;
+}
+inline std::istream& operator>>(std::istream& is, std::vector<bool>& bf) {
+	bf.clear();
+	char c;
+	while (is.get(c)) bf.push_back(c == '0' ? false : true);
+	return is;
+}
 
 }  // namespace std
 
@@ -29,18 +39,6 @@ template <typename C, typename = typename C::mapped_type>
 constexpr bool is_associative_container(C const*) {
 	return !is_string<typename C::key_type>::value;
 }
-
-std::ostream& operator<<(std::ostream& os, const std::vector<bool>& bf) {
-	for (const auto& b : bf) os << b;
-	return os;
-}
-std::istream& operator>>(std::istream& is, std::vector<bool>& bf) {
-	bf.clear();
-	char c;
-	while (is.get(c)) bf.push_back(c == '0' ? false : true);
-	return is;
-}
-
 template <typename T> T fromStr(const std::string& str) {
 	std::istringstream ss(str);
 	T out;
